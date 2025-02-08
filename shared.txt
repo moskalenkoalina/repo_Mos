@@ -1,2 +1,3 @@
 
-Changes from feature1! Changes from feature2!
+Changes from feature1! Changes from feature2! Hello from feature3! Final 
+changes from feature3.
