@@ -1,2 +1,2 @@
 Hello World!
-Hello Mech-Mat!
+Привіт Мех-мат!
