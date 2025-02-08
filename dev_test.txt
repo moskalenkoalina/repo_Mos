@@ -1,3 +1,2 @@
-line 1 for develop
-line 2 for develop
-additional line for develop
+print('Hello from develop')
+Changes in develop
