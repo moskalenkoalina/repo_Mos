@@ -1,0 +1,16 @@
+Figure: Circle
+Perimeter: 31.42
+Area: 78.54
+
+Figure: Rectangle
+Perimeter: 30.00
+Area: 50.00
+
+Figure: Triangle
+Perimeter: 12.00
+Area: 6.00
+
+Figure: Parallelogram
+Perimeter: 20.00
+Area: 24.00
+
