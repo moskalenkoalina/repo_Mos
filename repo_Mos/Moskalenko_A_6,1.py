@@ -57,7 +57,7 @@ class Solver:
 
         matrix_x = Matrix2D(rhs.x, matrix.a12, rhs.y, matrix.a22)
         det_x = matrix_x.determinant()
-        print(f"Determinant for x: {det_x}")  # Debug output
+        print(f"Determinant for x: {det_x}")
 
 
         matrix_y = Matrix2D(matrix.a11, rhs.x, matrix.a21, rhs.y)
@@ -98,7 +98,7 @@ def main():
                 solver = Solver()
                 solution1 = solver.solve(matrix, rhs)
 
-                # Записуємо результат у файл
+                
                 if solution1:
                     solution1_file.write("Розв'язок:\n")
                     solution1.output_to_file(solution1_file)
