@@ -96,29 +96,41 @@ class Cone(Circle):
         return (1/3) * super().square() * self.h
 
 def parse_figure(line):
-    try:
-        parts = line.split()
-        name, params = parts[0], list(map(float, parts[1:]))
-        classes = {
-            "Triangle": Triangle,
-            "Rectangle": Rectangle,
-            "Circle": Circle,
-            "Ball": Ball,
-            "Cone": Cone
-        }
-        return classes.get(name)(*params) if name in classes else None
-    except (ValueError, TypeError):
-        return None
+    parts = line.split()
+    name = parts[0]
+    params = list(map(float, parts[1:]))
+    classes = {
+        "Triangle": Triangle,
+        "Rectangle": Rectangle,
+        "Circle": Circle,
+        "Ball": Ball,
+        "Cone": Cone
+    }
+    if name in classes:
+        try:
+            return classes[name](*params)
+        except (ValueError, TypeError):
+            return None
+    return None
 
-def find_largest_measurement(filename):
+def find_largest(filename):
     with open(filename, 'r') as file:
-        figures = [parse_figure(line) for line in file if parse_figure(line)]
-    figures = [f for f in figures if f is not None]
-    return max(figures, key=lambda f: f.volume() if f else 0) if figures else None
+        return max(
+            (parse_figure(line) for line in file),
+            key=lambda f: f.volume() if f else 0,
+            default=None
+        )
 
+def write_r(result, output_filename):
+    with open(output_filename, 'w') as file:
+        if result:
+            file.write(f"Найбільша фігура: {result.__class__.__name__} з мірою {result.volume()}\n")
+        else:
+            file.write("У файлі немає коректних фігур.\n")
 
-largest_figure = find_largest_measurement("input01.txt")
-if largest_figure:
-    print(f"Найбільша фігура: {largest_figure.__class__.__name__} з мірою {largest_figure.volume()}")
-else:
-    print("У файлі немає коректних фігур.")
+def main():
+    largest_f = find_largest("input01.txt")
+    write_r(largest_f, "output.txt")
+
+if __name__ == "__main__":
+    main()
