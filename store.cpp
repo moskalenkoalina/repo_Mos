@@ -1,5 +1,28 @@
 #include "store.h"
 
+// Реалізація методів серіалізації для Person
+void Person::serialize(ofstream& file) const {
+    size_t nameSize = name.size();
+    file.write(reinterpret_cast<const char*>(&nameSize), sizeof(nameSize));
+    file.write(name.c_str(), nameSize);
+
+    size_t contactSize = contact.size();
+    file.write(reinterpret_cast<const char*>(&contactSize), sizeof(contactSize));
+    file.write(contact.c_str(), contactSize);
+}
+
+void Person::deserialize(ifstream& file) {
+    size_t nameSize;
+    file.read(reinterpret_cast<char*>(&nameSize), sizeof(nameSize));
+    name.resize(nameSize);
+    file.read(&name[0], nameSize);
+
+    size_t contactSize;
+    file.read(reinterpret_cast<char*>(&contactSize), sizeof(contactSize));
+    contact.resize(contactSize);
+    file.read(&contact[0], contactSize);
+}
+
 // Реалізація методів класу Person
 Person::Person(const string& n, const string& c) : name(n), contact(c) {}
 
@@ -9,6 +32,23 @@ void Person::display() const {
 
 string Person::getName() const { return name; }
 string Person::getContact() const { return contact; }
+
+// Реалізація серіалізації для Buyer
+void Buyer::serialize(ofstream& file) const {
+    Person::serialize(file);
+    file.write(reinterpret_cast<const char*>(&discount), sizeof(discount));
+    file.write(reinterpret_cast<const char*>(&purchasesCount), sizeof(purchasesCount));
+    file.write(reinterpret_cast<const char*>(&isRegular), sizeof(isRegular));
+    file.write(reinterpret_cast<const char*>(&totalSpent), sizeof(totalSpent));
+}
+
+void Buyer::deserialize(ifstream& file) {
+    Person::deserialize(file);
+    file.read(reinterpret_cast<char*>(&discount), sizeof(discount));
+    file.read(reinterpret_cast<char*>(&purchasesCount), sizeof(purchasesCount));
+    file.read(reinterpret_cast<char*>(&isRegular), sizeof(isRegular));
+    file.read(reinterpret_cast<char*>(&totalSpent), sizeof(totalSpent));
+}
 
 // Реалізація методів класу Buyer
 Buyer::Buyer(const string& n, const string& c, double disc, bool regular)
@@ -28,6 +68,21 @@ void Buyer::display() const {
     cout << ", Discount: " << fixed << setprecision(1) << (discount * 100) << "%, "
          << "Purchases: " << purchasesCount << ", Regular: " << (isRegular ? "Yes" : "No")
          << ", Total Spent: " << fixed << setprecision(2) << totalSpent << " USD" << endl;
+}
+
+// Реалізація серіалізації для Seller
+void Seller::serialize(ofstream& file) const {
+    Person::serialize(file);
+    file.write(reinterpret_cast<const char*>(&salary), sizeof(salary));
+    file.write(reinterpret_cast<const char*>(&totalProfit), sizeof(totalProfit));
+    file.write(reinterpret_cast<const char*>(&itemsSold), sizeof(itemsSold));
+}
+
+void Seller::deserialize(ifstream& file) {
+    Person::deserialize(file);
+    file.read(reinterpret_cast<char*>(&salary), sizeof(salary));
+    file.read(reinterpret_cast<char*>(&totalProfit), sizeof(totalProfit));
+    file.read(reinterpret_cast<char*>(&itemsSold), sizeof(itemsSold));
 }
 
 // Реалізація методів класу Seller
@@ -55,6 +110,15 @@ void Seller::display() const {
          << ", Total Profit: " << totalProfit << " USD" << endl;
 }
 
+// Реалізація серіалізації для Manager
+void Manager::serialize(ofstream& file) const {
+    Person::serialize(file);
+}
+
+void Manager::deserialize(ifstream& file) {
+    Person::deserialize(file);
+}
+
 // Реалізація методів класу Manager
 Manager::Manager(const string& n, const string& c) : Person(n, c) {}
 
@@ -62,6 +126,30 @@ void Manager::display() const {
     cout << "Manager - ";
     Person::display();
     cout << endl;
+}
+
+// Реалізація серіалізації для Product
+void Product::serialize(ofstream& file) const {
+    size_t nameSize = name.size();
+    file.write(reinterpret_cast<const char*>(&nameSize), sizeof(nameSize));
+    file.write(name.c_str(), nameSize);
+
+    file.write(reinterpret_cast<const char*>(&price), sizeof(price));
+    file.write(reinterpret_cast<const char*>(&cost), sizeof(cost));
+    file.write(reinterpret_cast<const char*>(&quantity), sizeof(quantity));
+    file.write(reinterpret_cast<const char*>(&soldQuantity), sizeof(soldQuantity));
+}
+
+void Product::deserialize(ifstream& file) {
+    size_t nameSize;
+    file.read(reinterpret_cast<char*>(&nameSize), sizeof(nameSize));
+    name.resize(nameSize);
+    file.read(&name[0], nameSize);
+
+    file.read(reinterpret_cast<char*>(&price), sizeof(price));
+    file.read(reinterpret_cast<char*>(&cost), sizeof(cost));
+    file.read(reinterpret_cast<char*>(&quantity), sizeof(quantity));
+    file.read(reinterpret_cast<char*>(&soldQuantity), sizeof(soldQuantity));
 }
 
 // Реалізація методів класу Product
@@ -88,7 +176,7 @@ int Product::getSoldQuantity() const { return soldQuantity; }
 void Product::addSoldQuantity(int q) { soldQuantity += q; }
 
 double Product::getProfitPerItem() const {
-    return price - cost; // Прибуток на одиницю товару
+    return price - cost;
 }
 
 void Product::display() const {
@@ -98,8 +186,172 @@ void Product::display() const {
 }
 
 // Реалізація методів класу Store
-Store::Store(const Manager& m, double initialBalance, const string& filename)
-    : manager(m), balance(initialBalance), dataFile(filename) {}
+Store::Store(const Manager& m, double initialBalance)
+    : manager(m), balance(initialBalance), autoSave(false) {
+    loadFromBinaryFile();
+}
+
+Store::~Store() {
+    saveToBinaryFile();
+}
+
+void Store::saveToBinaryFile() {
+    try {
+        // Зберігаємо продукти
+        ofstream productFile("products.bin", ios::binary);
+        for (const auto& product : products) {
+            product.serialize(productFile);
+        }
+        productFile.close();
+
+        // Зберігаємо продавців
+        ofstream sellerFile("sellers.bin", ios::binary);
+        for (const auto& seller : sellers) {
+            seller.serialize(sellerFile);
+        }
+        sellerFile.close();
+
+        // Зберігаємо покупців
+        ofstream buyerFile("buyers.bin", ios::binary);
+        for (const auto& buyer : buyers) {
+            buyer.serialize(buyerFile);
+        }
+        buyerFile.close();
+
+        // Зберігаємо баланс
+        ofstream balanceFile("balance.bin", ios::binary);
+        balanceFile.write(reinterpret_cast<const char*>(&balance), sizeof(balance));
+        balanceFile.close();
+
+        // Зберігаємо менеджера
+        ofstream managerFile("manager.bin", ios::binary);
+        manager.serialize(managerFile);
+        managerFile.close();
+
+        cout << "Data saved to binary files successfully!" << endl;
+    } catch (const exception& e) {
+        cerr << "Error saving data: " << e.what() << endl;
+    }
+}
+
+void Store::loadFromBinaryFile() {
+    try {
+        // Завантажуємо продукти
+        ifstream productFile("products.bin", ios::binary);
+        if (productFile.is_open()) {
+            products.clear();
+            while (productFile.peek() != EOF) {
+                Product product;
+                product.deserialize(productFile);
+                if (!product.getName().empty()) {
+                    products.push_back(product);
+                }
+            }
+            productFile.close();
+        }
+
+        // Завантажуємо продавців
+        ifstream sellerFile("sellers.bin", ios::binary);
+        if (sellerFile.is_open()) {
+            sellers.clear();
+            while (sellerFile.peek() != EOF) {
+                Seller seller;
+                seller.deserialize(sellerFile);
+                if (!seller.getName().empty()) {
+                    sellers.push_back(seller);
+                }
+            }
+            sellerFile.close();
+        }
+
+        // Завантажуємо покупців
+        ifstream buyerFile("buyers.bin", ios::binary);
+        if (buyerFile.is_open()) {
+            buyers.clear();
+            while (buyerFile.peek() != EOF) {
+                Buyer buyer;
+                buyer.deserialize(buyerFile);
+                if (!buyer.getName().empty()) {
+                    buyers.push_back(buyer);
+                }
+            }
+            buyerFile.close();
+        }
+
+        // Завантажуємо баланс
+        ifstream balanceFile("balance.bin", ios::binary);
+        if (balanceFile.is_open()) {
+            balanceFile.read(reinterpret_cast<char*>(&balance), sizeof(balance));
+            balanceFile.close();
+        }
+
+        // Завантажуємо менеджера
+        ifstream managerFile("manager.bin", ios::binary);
+        if (managerFile.is_open()) {
+            manager.deserialize(managerFile);
+            managerFile.close();
+        }
+
+        cout << "Data loaded from binary files successfully!" << endl;
+    } catch (const exception& e) {
+        cerr << "Error loading data: " << e.what() << endl;
+    }
+}
+
+void Store::appendProductToFile(const Product& product) {
+    ofstream file("products.bin", ios::binary | ios::app);
+    product.serialize(file);
+    file.close();
+}
+
+void Store::appendSellerToFile(const Seller& seller) {
+    ofstream file("sellers.bin", ios::binary | ios::app);
+    seller.serialize(file);
+    file.close();
+}
+
+void Store::appendBuyerToFile(const Buyer& buyer) {
+    ofstream file("buyers.bin", ios::binary | ios::app);
+    buyer.serialize(file);
+    file.close();
+}
+
+void Store::addProduct(const Product& p) {
+    products.push_back(p);
+    if (autoSave) {
+        appendProductToFile(p);
+    }
+}
+
+void Store::addSeller(const Seller& s) {
+    sellers.push_back(s);
+    if (autoSave) {
+        appendSellerToFile(s);
+    }
+}
+
+void Store::addBuyer(const Buyer& b) {
+    buyers.push_back(b);
+    if (autoSave) {
+        appendBuyerToFile(b);
+    }
+}
+
+void Store::clearData() {
+    products.clear();
+    sellers.clear();
+    buyers.clear();
+    balance = 15000.0;
+
+    // Видаляємо файли
+    remove("products.bin");
+    remove("sellers.bin");
+    remove("buyers.bin");
+    remove("balance.bin");
+    remove("manager.bin");
+}
+
+// Решта методів Store залишаються без змін (вони в попередній відповіді)
 
 Product* Store::findProduct(const string& productName) {
     for (auto& product : products) {
@@ -128,18 +380,6 @@ Buyer* Store::findBuyer(const string& buyerName) {
     return nullptr;
 }
 
-void Store::addProduct(const Product& p) {
-    products.push_back(p);
-}
-
-void Store::addSeller(const Seller& s) {
-    sellers.push_back(s);
-}
-
-void Store::addBuyer(const Buyer& b) {
-    buyers.push_back(b);
-}
-
 bool Store::purchaseItems(const string& buyerName, const string& sellerName,
                          const string& productName, int quantity) {
     try {
@@ -160,38 +400,30 @@ bool Store::purchaseItems(const string& buyerName, const string& sellerName,
         double finalPrice = basePrice * (1 - buyer->getDiscount());
 
         if (buyer->getIsRegular()) {
-            finalPrice *= 0.9; // Додаткова знижка 10% для постійних клієнтів
+            finalPrice *= 0.9;
         }
 
-        // Розрахунок прибутку для продавця (різниця між ціною продажу та собівартістю)
         double profitPerItem = product->getProfitPerItem();
         double totalProfitForSeller = profitPerItem * quantity;
 
-        // Оновлення даних
         product->reduceQuantity(quantity);
         product->addSoldQuantity(quantity);
         balance += finalPrice;
-
-        // Продавець отримує прибуток від продажу
         seller->addSale(totalProfitForSeller, quantity);
-
-        // Оновлення даних покупця
         buyer->incrementPurchases();
         buyer->addToTotalSpent(finalPrice);
 
-        // Перевірка, чи покупець став постійним
         if (buyer->getPurchasesCount() >= 3 && !buyer->getIsRegular()) {
             buyer->setIsRegular(true);
-            cout << "Buyer " << buyerName << " is now a regular customer!" << endl;
         }
 
-        cout << "Purchase successful: " << quantity << " x " << productName
-             << " for " << finalPrice << " USD (Profit: " << totalProfitForSeller << " USD)" << endl;
+        if (autoSave) {
+            saveToBinaryFile();
+        }
 
         return true;
 
     } catch (const exception& e) {
-        cout << "Purchase failed: " << e.what() << endl;
         return false;
     }
 }
@@ -200,32 +432,19 @@ void Store::restockProduct(const string& productName, int quantity) {
     Product* product = findProduct(productName);
     if (product) {
         product->addQuantity(quantity);
-        cout << "Restocked " << quantity << " units of " << productName << endl;
-    } else {
-        cout << "Product not found for restocking: " << productName << endl;
+        if (autoSave) {
+            saveToBinaryFile();
+        }
     }
 }
 
 void Store::calculateSalaries(double profitShare) {
-    double totalStoreProfit = 0;
-
-    // Спочатку розраховуємо загальний прибуток магазину
-    for (const auto& seller : sellers) {
-        totalStoreProfit += seller.getTotalProfit();
-    }
-
-    // Тепер розраховуємо зарплату кожному продавцю
     for (auto& seller : sellers) {
-        if (totalStoreProfit > 0) {
-            double sellerShare = seller.getTotalProfit() / totalStoreProfit;
-            seller.calculateSalary(profitShare * sellerShare);
-        } else {
-            seller.calculateSalary(0);
-        }
+        seller.calculateSalary(profitShare);
     }
-
-    cout << "Salaries calculated. Total store profit: " << totalStoreProfit
-         << " USD, Profit share: " << (profitShare * 100) << "%" << endl;
+    if (autoSave) {
+        saveToBinaryFile();
+    }
 }
 
 void Store::simulateRandomPurchases(int numberOfTransactions) {
@@ -327,22 +546,14 @@ void Store::displayFinancialReport() const {
     cout << "\n=== FINANCIAL REPORT ===" << endl;
     cout << "Current Balance: " << fixed << setprecision(2) << balance << " USD" << endl;
 
-    double totalSalesRevenue = 0;
-    double totalStoreProfit = 0;
+    double totalSales = 0;
     int totalItemsSold = 0;
-
     for (const auto& seller : sellers) {
-        totalStoreProfit += seller.getTotalProfit();
+        totalSales += seller.getTotalProfit();
         totalItemsSold += seller.getItemsSold();
     }
 
-    // Загальний дохід від продажів - це сума всіх грошей, отриманих від покупців
-    // Для спрощення вважаємо, що це баланс мінус початковий баланс
-    // Але краще було б вести окремий лічильник
-    totalSalesRevenue = balance - 15000.0; // Початковий баланс
-
-    cout << "Total Sales Revenue: " << totalSalesRevenue << " USD" << endl;
-    cout << "Total Store Profit: " << totalStoreProfit << " USD" << endl;
+    cout << "Total Sales: " << totalSales << " USD" << endl;
     cout << "Total Items Sold: " << totalItemsSold << endl;
 
     double totalSalaries = 0;
@@ -351,8 +562,8 @@ void Store::displayFinancialReport() const {
     }
     cout << "Total Salaries: " << totalSalaries << " USD" << endl;
 
-    double netProfit = totalStoreProfit - totalSalaries;
-    cout << "Net Profit: " << netProfit << " USD" << endl;
+    double profit = totalSales - totalSalaries;
+    cout << "Net Profit: " << profit << " USD" << endl;
 }
 
 double Store::getBalance() const {
@@ -371,7 +582,6 @@ vector<Buyer> Store::getBuyers() const {
     return buyers;
 }
 
-// Метод для ручного введення покупок з можливістю повтору при невдачі
 void Store::manualPurchaseInput() {
     if (products.empty() || sellers.empty() || buyers.empty()) {
         cout << "Cannot make purchase: need products, sellers and buyers" << endl;
@@ -478,7 +688,7 @@ void Store::manualPurchaseInput() {
                 cin >> retryChoice;
 
                 if (retryChoice == 'n' || retryChoice == 'N') {
-                    quantityValid = true; // Виходимо з циклу кількості, але продовжуємо shopping
+                    quantityValid = true;
                 }
             }
         }
@@ -538,28 +748,28 @@ char getCharInput(const string& prompt) {
 void initializeStoreWithSampleData(Store& store) {
     cout << "\n=== INITIALIZING STORE WITH SAMPLE DATA ===" << endl;
 
-    // Додавання товарів (ціна, собівартість, кількість)
-    store.addProduct(Product("Apple", 1.5, 0.8, 50));   // Прибуток: 0.7 на одиницю
-    store.addProduct(Product("Bread", 2.0, 1.0, 30));    // Прибуток: 1.0 на одиницю
-    store.addProduct(Product("Milk", 3.0, 1.5, 20));     // Прибуток: 1.5 на одиницю
-    store.addProduct(Product("Cheese", 5.0, 3.0, 15));   // Прибуток: 2.0 на одиницю
-    store.addProduct(Product("Chocolate", 4.5, 2.5, 25));// Прибуток: 2.0 на одиницю
+    // Додавання товарів
+    store.addProduct(Product("Apple", 1.5, 0.8, 50));
+    store.addProduct(Product("Bread", 2.0, 1.0, 30));
+    store.addProduct(Product("Milk", 3.0, 1.5, 20));
+    store.addProduct(Product("Cheese", 5.0, 3.0, 15));
+    store.addProduct(Product("Chocolate", 4.5, 2.5, 25));
 
     // Додавання продавців
     store.addSeller(Seller("Alice Smith", "alice@store.com"));
     store.addSeller(Seller("Bob Johnson", "bob@store.com"));
     store.addSeller(Seller("Carol Williams", "carol@store.com"));
 
-    // Додавання покупців (ім'я, контакт, знижка, постійний клієнт)
+    // Додавання покупців
     store.addBuyer(Buyer("Charlie Brown", "charlie@email.com", 0.0, false));
     store.addBuyer(Buyer("Diana Prince", "diana@email.com", 0.1, true));
     store.addBuyer(Buyer("Bruce Wayne", "bruce@wayne.com", 0.15, true));
     store.addBuyer(Buyer("Clark Kent", "clark@dailyplanet.com", 0.05, false));
 
     cout << "Store initialized with sample data:" << endl;
-    cout << "- 5 products with profit margins" << endl;
+    cout << "- 5 products" << endl;
     cout << "- 3 sellers" << endl;
-    cout << "- 4 buyers with different discounts" << endl;
+    cout << "- 4 buyers" << endl;
 }
 
 void manualDataInput(Store& store) {
@@ -630,9 +840,8 @@ void simulateDay(Store& store, int day, bool automaticMode) {
     if (automaticMode) {
         // Випадкові покупки тільки в автоматичному режимі
         cout << "\n1. Simulating customer purchases..." << endl;
-        int transactions = 10 + (rand() % 15); // Більше транзакцій
+        int transactions = 10 + (rand() % 15);
         store.simulateRandomPurchases(transactions);
-        this_thread::sleep_for(chrono::seconds(1));
 
         // Випадкове поповнення запасів
         cout << "\n2. Restocking products..." << endl;
@@ -647,8 +856,7 @@ void simulateDay(Store& store, int day, bool automaticMode) {
 
     // Розрахунок зарплат
     cout << "\n3. Calculating salaries..." << endl;
-    store.calculateSalaries(0.05); // 5% від прибутку
-    this_thread::sleep_for(chrono::seconds(1));
+    store.calculateSalaries(0.05);
 
     // Показ результатів дня
     cout << "\n4. End of day report:" << endl;

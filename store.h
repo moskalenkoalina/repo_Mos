@@ -29,6 +29,10 @@ public:
     virtual void display() const;
     string getName() const;
     string getContact() const;
+
+    // Методи для серіалізації
+    virtual void serialize(ofstream& file) const;
+    virtual void deserialize(ifstream& file);
 };
 
 // Клас Покупець
@@ -40,6 +44,7 @@ private:
     double totalSpent;
 public:
     Buyer(const string& n = "", const string& c = "", double disc = 0.0, bool regular = false);
+
     double getDiscount() const;
     void incrementPurchases();
     int getPurchasesCount() const;
@@ -47,7 +52,12 @@ public:
     void setIsRegular(bool regular);
     void addToTotalSpent(double amount);
     double getTotalSpent() const;
+
     void display() const override;
+
+    // Серіалізація
+    void serialize(ofstream& file) const override;
+    void deserialize(ifstream& file) override;
 };
 
 // Клас Продавець
@@ -58,19 +68,31 @@ private:
     int itemsSold;
 public:
     Seller(const string& n = "", const string& c = "");
+
     void calculateSalary(double profitShare);
     void addSale(double itemProfit, int quantity = 1);
+
     double getSalary() const;
     double getTotalProfit() const;
     int getItemsSold() const;
+
     void display() const override;
+
+    // Серіалізація
+    void serialize(ofstream& file) const override;
+    void deserialize(ifstream& file) override;
 };
 
 // Клас Керівник
 class Manager : public Person {
 public:
     Manager(const string& n = "", const string& c = "");
+
     void display() const override;
+
+    // Серіалізація
+    void serialize(ofstream& file) const override;
+    void deserialize(ifstream& file) override;
 };
 
 // Клас Товар
@@ -83,16 +105,24 @@ private:
     int soldQuantity;
 public:
     Product(const string& n = "", double p = 0.0, double c = 0.0, int q = 0);
+
     double getPrice() const;
     double getCost() const;
     int getQuantity() const;
     string getName() const;
+
     void reduceQuantity(int count);
     void addQuantity(int count);
+
     int getSoldQuantity() const;
     void addSoldQuantity(int q);
+
     void display() const;
-    double getProfitPerItem() const; // Додаємо метод для отримання прибутку на одиницю
+    double getProfitPerItem() const;
+
+    // Серіалізація
+    void serialize(ofstream& file) const;
+    void deserialize(ifstream& file);
 };
 
 // Клас Магазин
@@ -103,14 +133,25 @@ private:
     vector<Buyer> buyers;
     Manager manager;
     double balance;
-    string dataFile;
+    bool autoSave; // Флаг автоматичного збереження
 
     Product* findProduct(const string& productName);
     Seller* findSeller(const string& sellerName);
     Buyer* findBuyer(const string& buyerName);
 
+    // Допоміжні функції для роботи з файлами
+    void saveToBinaryFile();
+    void loadFromBinaryFile();
+    void appendProductToFile(const Product& product);
+    void appendSellerToFile(const Seller& seller);
+    void appendBuyerToFile(const Buyer& buyer);
+
 public:
-    Store(const Manager& m, double initialBalance = 10000.0, const string& filename = "store_data.bin");
+    Store(const Manager& m, double initialBalance = 10000.0);
+    ~Store();
+
+    void setAutoSave(bool enable) { autoSave = enable; }
+    bool getAutoSave() const { return autoSave; } // ДОДАНО МЕТОД GETTER
 
     void addProduct(const Product& p);
     void addSeller(const Seller& s);
@@ -118,8 +159,8 @@ public:
 
     bool purchaseItems(const string& buyerName, const string& sellerName,
                       const string& productName, int quantity);
-    void restockProduct(const string& productName, int quantity);
 
+    void restockProduct(const string& productName, int quantity);
     void calculateSalaries(double profitShare = 0.05);
 
     void simulateRandomPurchases(int numberOfTransactions);
@@ -138,6 +179,9 @@ public:
 
     // Метод для ручного введення покупок з можливістю повтору при невдачі
     void manualPurchaseInput();
+
+    // Очищення даних
+    void clearData();
 };
 
 // Допоміжні функції для роботи з вводом
